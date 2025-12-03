@@ -6,7 +6,7 @@ import urllib.request
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.header import Header
-from email.utils import formataddr  # 新增这个工具
+from email.utils import formataddr
 
 # --- 1. 读取配置 ---
 try:
@@ -35,28 +35,32 @@ def get_server_status():
 
     report.append("")
 
-    # 获取内存
+    # 获取内存 (修正版：获取 Available 而不是 Free)
     try:
         free = subprocess.check_output("free -h", shell=True).decode('utf-8')
         report.append("[内存状态]")
         for line in free.split('\n'):
             if "Mem:" in line:
                 parts = line.split()
-                report.append(f"总内存: {parts[1]}, 已用: {parts[2]}, 空闲: {parts[3]}")
+                # parts[1]=总, parts[2]=已用, parts[3]=Free, parts[6]=Available(真实可用)
+                # 注意：有些系统 Available 在第7列(下标6)，有些在第6列，这里做个兼容
+                available_mem = parts[6] if len(parts) > 6 else parts[-1]
+                report.append(f"总内存: {parts[1]}")
+                report.append(f"已用: {parts[2]} (系统+软件)")
+                report.append(f"真实可用: {available_mem} (含缓存)")
+                report.append(f"(注: Linux会自动利用空闲内存做缓存，这是正常的)")
     except:
         report.append("[内存获取失败]")
         
     return "\n".join(report)
 
-# --- 3. 发送邮件 (修复版) ---
+# --- 3. 发送邮件 ---
 def send_email(content):
     sender = config['email_sender']
     password = config['email_password']
     receiver = config['email_receiver']
     
     message = MIMEText(content, 'plain', 'utf-8')
-    
-    # 【关键修复】使用标准格式： 昵称 <邮箱地址>
     message['From'] = formataddr(("服务器管家", sender))
     message['To'] = formataddr(("主人", receiver))
     message['Subject'] = Header(f"服务器日报 {datetime.now().strftime('%F')}", 'utf-8')
