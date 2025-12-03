@@ -16,12 +16,36 @@ except FileNotFoundError:
     print("❌ 错误: 找不到 config.json 配置文件")
     exit(1)
 
-# --- 2. 获取系统信息 ---
+# --- 2. 获取系统信息 (升级版) ---
 def get_server_status():
     report = []
+    is_danger = False  # 默认安全标志位
+    
     report.append(f"=== 服务器每日体检报告 ===")
     report.append(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report.append("-" * 30)
+
+    # [新增] 获取 CPU 负载 (你刚才验证过的逻辑)
+    try:
+        report.append("[CPU 负载]")
+        raw = subprocess.check_output("uptime", shell=True).decode('utf-8')
+        # 清理逗号并切割
+        parts = raw.replace(',', ' ').split()
+        load_1min = float(parts[-3]) # 获取倒数第3个数字
+        
+        report.append(f"1分钟平均负载: {load_1min}")
+        
+        # 判断是否报警
+        if load_1min > 2.0:
+            report.append("⚠️ 警告: CPU 负载过高！")
+            is_danger = True  # 举起红旗！
+        else:
+            report.append("✅ 状态正常")
+            
+    except Exception as e:
+        report.append(f"[CPU 获取失败: {e}]")
+    
+    report.append("")
     
     # 获取磁盘
     try:
@@ -35,27 +59,24 @@ def get_server_status():
 
     report.append("")
 
-    # 获取内存 (修正版：获取 Available 而不是 Free)
+    # 获取内存
     try:
         free = subprocess.check_output("free -h", shell=True).decode('utf-8')
         report.append("[内存状态]")
         for line in free.split('\n'):
             if "Mem:" in line:
                 parts = line.split()
-                # parts[1]=总, parts[2]=已用, parts[3]=Free, parts[6]=Available(真实可用)
-                # 注意：有些系统 Available 在第7列(下标6)，有些在第6列，这里做个兼容
                 available_mem = parts[6] if len(parts) > 6 else parts[-1]
-                report.append(f"总内存: {parts[1]}")
-                report.append(f"已用: {parts[2]} (系统+软件)")
+                report.append(f"总内存: {parts[1]}, 已用: {parts[2]}")
                 report.append(f"真实可用: {available_mem} (含缓存)")
-                report.append(f"(注: Linux会自动利用空闲内存做缓存，这是正常的)")
     except:
         report.append("[内存获取失败]")
         
-    return "\n".join(report)
+    # 返回两个值：报告内容，以及 是否危险
+    return "\n".join(report), is_danger
 
-# --- 3. 发送邮件 ---
-def send_email(content):
+# --- 3. 发送邮件 (接收报警信号) ---
+def send_email(content, is_danger=False):
     sender = config['email_sender']
     password = config['email_password']
     receiver = config['email_receiver']
@@ -63,14 +84,19 @@ def send_email(content):
     message = MIMEText(content, 'plain', 'utf-8')
     message['From'] = formataddr(("服务器管家", sender))
     message['To'] = formataddr(("主人", receiver))
-    message['Subject'] = Header(f"服务器日报 {datetime.now().strftime('%F')}", 'utf-8')
+    
+    # [新增] 动态修改标题
+    prefix = "【警告】" if is_danger else ""
+    subject = f"{prefix}服务器日报 {datetime.now().strftime('%F')}"
+    
+    message['Subject'] = Header(subject, 'utf-8')
 
     try:
         server = smtplib.SMTP_SSL("smtp.qq.com", 465)
         server.login(sender, password)
         server.sendmail(sender, [receiver], message.as_string())
         server.quit()
-        print("✅ 邮件发送成功")
+        print(f"✅ 邮件发送成功 (报警状态: {is_danger})")
         return True
     except Exception as e:
         print(f"❌ 邮件发送失败: {e}")
@@ -85,8 +111,13 @@ def ping_healthchecks():
     except Exception as e:
         print(f"❌ Healthchecks 打卡失败: {e}")
 
-# --- 主程序 ---
+# --- 主程序入口 ---
 if __name__ == "__main__":
-    report_content = get_server_status()
-    send_email(report_content)
+    # 1. 获取状态 (拿到两个返回值)
+    report_content, danger_signal = get_server_status()
+    
+    # 2. 发送邮件 (把报警信号传进去)
+    send_email(report_content, danger_signal)
+    
+    # 3. 打卡
     ping_healthchecks()
