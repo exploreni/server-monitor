@@ -1,51 +1,45 @@
-# 📊 Server Monitor (简易服务器监控脚本)
+# 📊 Server Monitor (Python 版服务器监控)
 
-这是一个轻量级的 Linux 服务器监控脚本，专为个人 VPS 设计。它可以每天自动检查服务器状态，发送日报邮件，并与 [Healthchecks.io](https://healthchecks.io) 集成进行心跳检测。
+这是一个升级版的 Linux 服务器监控脚本，使用 **Python** 编写。相比于旧版 Shell 脚本，它实现了**配置分离**，更加安全、稳定，且无需依赖系统邮件服务。
 
 ## ✨ 功能特点
 
-- **硬盘监控**：自动检测根分区使用率。
-- **内存监控**：实时查看内存占用情况。
-- **邮件日报**：每天定时发送体检报告到指定邮箱（支持 QQ 邮箱）。
-- **死信检测**：集成 Healthchecks.io，如果脚本未执行或执行失败，会收到报警。
-- **容错设计**：邮件发送失败不影响后续的心跳打卡。
-- **日志记录**：所有运行状态自动记录到 log 文件，方便排查。
+- **🚀 Python 重构**：逻辑更清晰，运行更稳定。
+- **🔒 安全配置**：敏感信息（密码/Token）存储在 `config.json` 中，配合 `.gitignore` 防止泄露。
+- **💾 真实内存**：精准计算 Linux 系统下的真实可用内存（Available）。
+- **📧 原生邮件**：内置 SMTP 客户端，无需安装 s-nail 等第三方工具。
+- **💓 死信检测**：集成 Healthchecks.io 心跳打卡。
+- **🛡️ 容错设计**：邮件发送失败不影响打卡，打卡失败有重试机制。
 
 ## 🛠️ 快速开始
 
-### 1. 安装依赖
-本脚本依赖 `s-nail` 发送邮件，请先安装：
+### 1. 环境要求
+Linux 系统通常自带 Python3，无需额外安装。检查命令：
 ```bash
-apt-get update && apt-get install s-nail -y
+python3 --version
 ```
 
-### 2. 配置邮件服务
-编辑 `/etc/s-nail.rc`，添加你的邮箱配置（以 QQ 邮箱为例）：
-```bash
-set v15-compat
-set from="你的邮箱@qq.com"
-set mta=smtps://你的邮箱%40qq.com:授权码@smtp.qq.com:465
-set smtp-auth=login
-set ssl-verify=ignore
-set norecord
+### 2. 创建配置文件
+在项目根目录下创建 `config.json`：
+```json
+{
+    "email_sender": "你的邮箱@qq.com",
+    "email_password": "你的授权码",
+    "email_receiver": "接收邮箱@qq.com",
+    "hc_url": "你的Healthchecks打卡地址"
+}
 ```
 
-### 3. 部署脚本
-下载脚本并赋予执行权限：
+### 3. 运行测试
 ```bash
-chmod +x monitor.sh
+python3 monitor.py
 ```
-
-修改脚本中的配置区域：
-```bash
-EMAIL="你的接收邮箱"
-HC_URL="你的Healthchecks打卡地址"
-```
+如果看到 "✅ 邮件发送成功" 和 "✅ Healthchecks 打卡成功"，说明配置无误。
 
 ### 4. 设置定时任务 (Crontab)
 推荐每天早上 8:05 执行：
 ```bash
-5 8 * * * /bin/bash /root/practice/monitor.sh >> /root/practice/monitor.log 2>&1
+5 8 * * * /usr/bin/python3 /root/practice/monitor.py >> /root/practice/monitor.log 2>&1
 ```
 
 ## 📝 日志查看
