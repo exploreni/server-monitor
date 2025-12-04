@@ -1,0 +1,14 @@
+services:
+  monitor:
+    # 1. 怎么做菜？(Build)
+    build: .
+    
+    # 2. 叫什么名？(Container Name)
+    container_name: server-monitor
+    
+    # 3. 开什么门？(Ports)
+    ports:
+      - "5000:5000"
+    
+    # 4. 挂了咋办？(Restart)
+    restart: always
