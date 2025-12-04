@@ -1,52 +1,49 @@
-# 📊 Server Monitor (Python 版服务器监控)
+# 📊 Server Monitor (Python + Docker)
 
-这是一个升级版的 Linux 服务器监控脚本，使用 **Python** 编写。相比于旧版 Shell 脚本，它实现了**配置分离**，更加安全、稳定，且无需依赖系统邮件服务。
+一个轻量级、可视化的 Linux 服务器监控面板。支持 **Web 仪表盘** 查看实时状态，支持 **SMTP 邮件报警** 和 **Healthchecks** 心跳检测。
 
 ## ✨ 功能特点
 
-- **🔥 CPU 报警**：[新增] 实时监控系统负载，超过 2.0 自动在邮件标题加【警告】。
-- **🚀 Python 重构**：逻辑更清晰，运行更稳定。
-- **🔒 安全配置**：敏感信息（密码/Token）存储在 `config.json` 中，配合 `.gitignore` 防止泄露。
-- **💾 真实内存**：精准计算 Linux 系统下的真实可用内存（Available）。
-- **📧 原生邮件**：内置 SMTP 客户端，无需安装 s-nail 等第三方工具。
-- **💓 死信检测**：集成 Healthchecks.io 心跳打卡。
-- **🛡️ 容错设计**：邮件发送失败不影响打卡，打卡失败有重试机制。
+- **🔥 实时 Web 面板**：基于 Flask 开发，黑客风 UI，秒级刷新。
+- **🐳 Docker 部署**：提供 Dockerfile，一行命令即可启动，环境零依赖。
+- **🚀 轻量高效**：基于 psutil 采集，资源占用极低 (<50MB)。
+- **📧 智能报警**：CPU 负载 > 2.0 自动发送邮件，磁盘/内存可视化展示。
+- **🛡️ 安全设计**：配置与代码分离，支持通过环境变量或挂载文件配置敏感信息。
 
-## 🛠️ 快速开始
+## 🛠️ 快速开始 (Docker 方式 - 推荐)
 
-### 1. 环境要求
-Linux 系统通常自带 Python3，无需额外安装。检查命令：
+### 1. 下载代码
 ```bash
-python3 --version
+git clone https://github.com/exploreni/server-monitor.git
+cd server-monitor
 ```
 
-### 2. 创建配置文件
-在项目根目录下创建 `config.json`：
+### 2. 准备配置文件
+请在当前目录创建一个 `config.json` 文件（参考代码中的格式）：
 ```json
 {
-    "email_sender": "你的邮箱@qq.com",
-    "email_password": "你的授权码",
-    "email_receiver": "接收邮箱@qq.com",
-    "hc_url": "你的Healthchecks打卡地址"
+    "email_sender": "...",
+    "email_password": "...",
+    "hc_url": "..."
 }
 ```
 
-### 3. 运行测试
+### 3. 构建并启动
 ```bash
-python3 monitor.py
-```
-如果看到 "✅ 邮件发送成功" 和 "✅ Healthchecks 打卡成功"，说明配置无误。
+# 构建镜像
+docker build -t my-monitor .
 
-### 4. 设置定时任务 (Crontab)
-推荐每天早上 8:05 执行：
-```bash
-5 8 * * * /usr/bin/python3 /root/practice/monitor.py >> /root/practice/monitor.log 2>&1
+# 启动容器 (映射5000端口)
+docker run -d -p 5000:5000 --name server-monitor --restart always my-monitor
 ```
 
-## 📝 日志查看
-脚本运行日志会保存在 `monitor.log` 中：
+访问浏览器 `http://你的IP:5000` 即可看到监控面板。
+
+## 📦 传统方式运行 (Python)
+如果你不想用 Docker，也可以直接运行：
 ```bash
-tail -f monitor.log
+pip install flask psutil
+python3 web_monitor.py
 ```
 
 ## 📄 License
